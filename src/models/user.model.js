@@ -2,8 +2,9 @@ const mongoose = require("mongoose");
 // NOTE - "validator" external library and not the custom middleware at src/middlewares/validate.js
 const validator = require("validator");
 const config = require("../config/config");
+var bcrypt = require('bcryptjs');
 
-// TODO: CRIO_TASK_MODULE_UNDERSTANDING_BASICS - Complete userSchema, a Mongoose schema for "users" collection
+
 const userSchema = mongoose.Schema(
   {
     name: {
@@ -56,10 +57,29 @@ const userSchema = mongoose.Schema(
  */
 userSchema.statics.isEmailTaken = async function (email) {
   try{
-    const email = await this.find({email}); 
-    if(email) return true; 
+    const storedEmail = await this.findOne({email}); 
+    if(storedEmail) return true; 
     return false; 
   }catch(err){}
+};
+
+userSchema.pre("save", async function(next){
+  try{
+    const salt = await bcrypt.genSalt(10); 
+    this.password = await bcrypt.hash(this.password, salt); 
+  }catch(err){
+    console.log("Something went wrong"); 
+  }
+}); 
+
+/**
+ * Check if entered password matches the user's password
+ * @param {string} password
+ * @returns {Promise<boolean>}
+ */
+userSchema.methods.isPasswordMatch = async function (password) {
+  const result = await bcrypt.compare(password, this.password); 
+  return result; 
 };
 
 
@@ -74,7 +94,7 @@ userSchema.statics.isEmailTaken = async function (email) {
  * @typedef User
  */
 
-const User = mongoose.model('User', userSchema)
+const User = mongoose.model('User', userSchema); 
 
 module.exports = {
   User
